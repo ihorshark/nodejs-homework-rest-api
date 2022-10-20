@@ -1,68 +1,33 @@
 const express = require("express");
 
-const { RequestError } = require("../../helpers/RequestError");
-const schemas = require("../../schemas/contact");
-
 const router = express.Router();
 
-const contacts = require("../../models/contacts");
+const ctrl = require("../../controllers/contacts");
+const { ctrlWrapper } = require("../../helpers");
 
-router.get("/", async (req, res, next) => {
-  const result = await contacts.listContacts();
-  res.json(result);
-});
+const { validateBody, isValidId } = require("../../middlewares");
+const { schemas } = require("../../models/contact");
 
-router.get("/:contactId", async (req, res, next) => {
-  try {
-    const { contactId } = req.params;
-    const result = await contacts.getContactById(contactId);
-    if (!result) {
-      throw RequestError(404, "Not found");
-    }
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-});
+router.get("/", ctrlWrapper(ctrl.getAll));
 
-router.post("/", async (req, res, next) => {
-  try {
-    const { error } = schemas.addSchema.validate(req.body);
-    if (error) {
-      next(RequestError(400, error.message));
-    }
-    const result = await contacts.addContact(req.body);
-    res.status(201).json(result);
-  } catch (error) {
-    next(error);
-  }
-});
+router.get("/:contactId", isValidId, ctrlWrapper(ctrl.getById));
 
-router.delete("/:contactId", async (req, res, next) => {
-  try {
-    const { contactId } = req.params;
-    const result = await contacts.removeContact(contactId);
-    if (!result) {
-      throw RequestError(404, "Not found");
-    }
-    res.json({ message: "Contact removed" });
-  } catch (error) {
-    next(error);
-  }
-});
+router.post("/", validateBody(schemas.addSchema), ctrlWrapper(ctrl.addContact));
 
-router.put("/:contactId", async (req, res, next) => {
-  try {
-    const { error } = schemas.addSchema.validate(req.body);
-    if (error) {
-      next(RequestError(400, error.message));
-    }
-    const { contactId } = req.params;
-    const result = await contacts.updateContact(contactId, req.body);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-});
+router.delete("/:contactId", isValidId, ctrlWrapper(ctrl.deleteContact));
+
+router.put(
+  "/:contactId",
+  isValidId,
+  validateBody(schemas.addSchema),
+  ctrlWrapper(ctrl.update)
+);
+
+router.patch(
+  "/:contactId/favorite",
+  isValidId,
+  validateBody(schemas.updateFavoriteSchema),
+  ctrlWrapper(ctrl.updateFavorite)
+);
 
 module.exports = router;
